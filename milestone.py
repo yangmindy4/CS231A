@@ -58,7 +58,6 @@ def transform_image(H, image, indices):
     # specified by indices
     corresponding_points = calculate_projection(H_inv, indices)
     new_image = copy.deepcopy(image)
-    pdb.set_trace()
     for i in range(len(indices)):
         new_image[int(corresponding_points[i][1]), int(corresponding_points[i][0])] = 0
     for i in range(len(indices)):
@@ -80,18 +79,18 @@ def main():
         [2964.35, 1499.38],
         [1462.43, 1670.79]
         ])
-    # plt.plot(flat_corners[:,0], flat_corners[:,1], 'ro')
     top_right_projected = 2*flat_corners[1]-flat_corners[0]
     bottom_right_projected = 2*flat_corners[2]-flat_corners[3]
-    plt.plot(top_right_projected[0], top_right_projected[1], 'bo')
-    plt.plot(bottom_right_projected[0], bottom_right_projected[1], 'bo')
+    # plt.plot(top_right_projected[0], top_right_projected[1], 'bo')
+    # plt.plot(bottom_right_projected[0], bottom_right_projected[1], 'bo')
 
     projection = np.r_[flat_corners[1][None,:], top_right_projected[None,:], \
-        flat_corners[2][None,:], bottom_right_projected[None,:]]
+        bottom_right_projected[None,:],flat_corners[2][None,:]]
     H = compute_homography(folded_corners, projection)
    
     reprojection = calculate_projection(H, folded_corners)
-    folded = mppath.Path(reprojection, closed=True)
+
+    folded = mppath.Path(np.r_[reprojection, reprojection[0][None,:]], closed=True)
     xx, yy = np.meshgrid(np.arange(0, folded_envelope.shape[1]), np.arange(0, folded_envelope.shape[0]))
     xx = np.reshape(xx, -1)
     yy = np.reshape(yy, -1)
@@ -100,8 +99,7 @@ def main():
     new_image = transform_image(H, folded_envelope, flattened_portion)
     plt.imshow(new_image)
     plt.show()
-
-    triangle_example(H)
+    # triangle_example(H)
    
 
 if __name__ == '__main__':
