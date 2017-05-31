@@ -2,9 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib
+import matplotlib.path as mppath
 import math
 import pdb
 from scipy.spatial import ConvexHull
+import copy
 
 def calculate_projection(H, points):
     points_homogenized = np.c_[points, np.ones(len(points))].T
@@ -32,31 +34,7 @@ def compute_homography(image1, image2):
     H = solution.reshape((3,3))
     return H
 
-def main():
-    folded_envelope = mpimg.imread("images/Envelope2.jpg")
-    plt.imshow(folded_envelope)
-    #flat portion corners
-    flat_corners = np.array([
-        [360.481, 597.411],
-        [1519.57, 646.386],
-        [99.277, 1605.49],
-        [1462.43, 1670.79]])
-    folded_corners = np.array([
-        [1519.57, 646.386],
-        [2756.2, 262.744],
-        [1462.43, 1670.79],
-        [2964.35, 1499.38]
-        ])
-    # plt.plot(flat_corners[:,0], flat_corners[:,1], 'ro')
-    top_right_projected = 2*flat_corners[1]-flat_corners[0]
-    bottom_right_projected = 2*flat_corners[3]-flat_corners[2]
-    # plt.plot(top_right_projected[0], top_right_projected[1], 'bo')
-    # plt.plot(bottom_right_projected[0], bottom_right_projected[1], 'bo')
-
-    projection = np.r_[flat_corners[1][None,:], top_right_projected[None,:], flat_corners[3][None,:], bottom_right_projected[None,:]]
-    H = compute_homography(folded_corners, projection)
-    # reprojection = calculate_projection(H, folded_corners)
-    # plt.plot(reprojection[:,0], reprojection[:,1], 'ro') 
+def triangle_example(H):
     triangle = np.array([
         [1897.69, 712.403],
         [1764.29, 1039.89],
@@ -70,9 +48,61 @@ def main():
     plt.plot(projected_triangle[1,0], projected_triangle[1,1], 'go')
     plt.plot(projected_triangle[2,0], projected_triangle[2,1], 'go')
     plt.show()
-    pdb.set_trace()
-    folded_area = ConvexHull(folded_corners)
 
+# Transform the portion of the image specified by indices
+# according to the homography (inverse of it). Use
+# bilinear interpolation
+def transform_image(H, image, indices):
+    H_inv = np.linalg.inv(H)
+    # corresponding points in the original folded image that map to points
+    # specified by indices
+    corresponding_points = calculate_projection(H_inv, indices)
+    new_image = copy.deepcopy(image)
+    pdb.set_trace()
+    for i in range(len(indices)):
+        new_image[int(corresponding_points[i][1]), int(corresponding_points[i][0])] = 0
+    for i in range(len(indices)):
+        new_image[indices[i][1], indices[i][0]] = image[int(corresponding_points[i][1]), int(corresponding_points[i][0])]
+    return new_image
+
+def main():
+    folded_envelope = mpimg.imread("images/Envelope2.jpg")
+    plt.imshow(folded_envelope)
+    #flat portion corners
+    flat_corners = np.array([
+        [360.481, 597.411],
+        [1519.57, 646.386],
+        [1462.43, 1670.79],
+        [99.277, 1605.49]])
+    folded_corners = np.array([
+        [1519.57, 646.386],
+        [2756.2, 262.744],
+        [2964.35, 1499.38],
+        [1462.43, 1670.79]
+        ])
+    # plt.plot(flat_corners[:,0], flat_corners[:,1], 'ro')
+    top_right_projected = 2*flat_corners[1]-flat_corners[0]
+    bottom_right_projected = 2*flat_corners[2]-flat_corners[3]
+    plt.plot(top_right_projected[0], top_right_projected[1], 'bo')
+    plt.plot(bottom_right_projected[0], bottom_right_projected[1], 'bo')
+
+    projection = np.r_[flat_corners[1][None,:], top_right_projected[None,:], \
+        flat_corners[2][None,:], bottom_right_projected[None,:]]
+    H = compute_homography(folded_corners, projection)
+   
+    reprojection = calculate_projection(H, folded_corners)
+    folded = mppath.Path(reprojection, closed=True)
+    xx, yy = np.meshgrid(np.arange(0, folded_envelope.shape[1]), np.arange(0, folded_envelope.shape[0]))
+    xx = np.reshape(xx, -1)
+    yy = np.reshape(yy, -1)
+    zipped = zip(xx, yy)
+    flattened_portion = np.array(zipped)[np.where(folded.contains_points(zipped) == True)[0]]
+    new_image = transform_image(H, folded_envelope, flattened_portion)
+    plt.imshow(new_image)
+    plt.show()
+
+    triangle_example(H)
+   
 
 if __name__ == '__main__':
     main()
