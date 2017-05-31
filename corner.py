@@ -115,15 +115,15 @@ def main():
     :return: None
     """
     img = readImage("images/envelope1min.jpg")
-    # img[img > 0.5] = 1
-    # img[img <= 0.5] = 0
-    # coords = corner_peaks(corner_harris(img))
-    # coords_subpix = corner_subpix(img, coords, window_size=13)
-    # fig, ax = plt.subplots()
-    # ax.imshow(img, interpolation='nearest', cmap=plt.cm.gray)
-    # ax.plot(coords[:, 1], coords[:, 0], '.b', markersize=3)
-    # ax.plot(coords_subpix[:, 1], coords_subpix[:, 0], '+r', markersize=15)
-    # plt.show()
+    img[img > 0.5] = 1
+    img[img <= 0.5] = 0
+    coords = corner_peaks(corner_harris(img), min_distance=5)
+    coords_subpix = corner_subpix(img, coords, window_size=13)
+    fig, ax = plt.subplots()
+    ax.imshow(img, interpolation='nearest', cmap=plt.cm.gray)
+    ax.plot(coords[:, 1], coords[:, 0], '.b', markersize=3)
+    ax.plot(coords_subpix[:, 1], coords_subpix[:, 0], '+r', markersize=15)
+    plt.show()
 #     window_size = 5
 #     k = 0.04
 #     thresh = 10000 
@@ -136,7 +136,7 @@ def main():
     # fig, ax = plt.subplots()
     # ax.imshow(edges1, interpolation='nearest', cmap=plt.cm.gray)
     # plt.show()
-    createFilter(210, 7)
+    # createFilter(210, 7)
 
 if __name__ == "__main__":
     main()
