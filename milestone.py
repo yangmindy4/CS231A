@@ -53,18 +53,15 @@ def triangle_example(H):
 # according to the homography (inverse of it). Use
 # bilinear interpolation
 # TODO: bilinear interpolation
-def transform_image(H, image, indices):
+def transform_image(H, orig_image, new_image, indices):
     H_inv = np.linalg.inv(H)
     # corresponding points in the original folded image that map to points
     # specified by indices
-    pdb.set_trace()
     corresponding_points = calculate_projection(H_inv, indices)
-    # new_image = copy.deepcopy(image)
-    new_image = np.zeros((1051, 1201, 3))
     # for i in range(len(indices)):
     #     new_image[int(corresponding_points[i][1]), int(corresponding_points[i][0])] = 0
     for i in range(len(indices)):
-        new_image[indices[i][1], indices[i][0]] = image[int(corresponding_points[i][1]), int(corresponding_points[i][0])]
+        new_image[indices[i][1], indices[i][0]] = orig_image[int(corresponding_points[i][1]), int(corresponding_points[i][0])]
 
     return new_image
 
@@ -92,11 +89,11 @@ def dog_example():
         [1460.76, 777.252],
         [1398.88, 1554.62],
         [126.481, 1423.12]])
-    ground_truth = np.array([
+    flat_ground_truth = np.array([
         [0, 0],
-        [1200, 0],
-        [1200, 1050],
-        [0, 1050]
+        [1199, 0],
+        [1199, 1049],
+        [0, 1049]
         ])
     folded_corners = np.array([
         [1460.76, 777.252],
@@ -104,25 +101,41 @@ def dog_example():
         [2385.09, 815.927],
         [1398.88, 1554.62],
         ])
-    top_right_projected = 2*flat_corners[1]-flat_corners[0]
-    bottom_right_projected = 2*flat_corners[2]-flat_corners[3]
+    folded_ground_truth = np.array([
+        [1199, 0],
+        [2399, 0],
+        [2399, 1049],
+        [1199, 1049]
+        ])
+    # top_right_projected = 2*flat_corners[1]-flat_corners[0]
+    # bottom_right_projected = 2*flat_corners[2]-flat_corners[3]
     # plt.plot(top_right_projected[0], top_right_projected[1], 'bo')
     # plt.plot(bottom_right_projected[0], bottom_right_projected[1], 'bo')
 
-    projection = np.r_[flat_corners[1][None,:], top_right_projected[None,:], \
-        bottom_right_projected[None,:],flat_corners[2][None,:]]
-    H = compute_homography(folded_corners, ground_truth)
+    # projection = np.r_[flat_corners[1][None,:], top_right_projected[None,:], \
+    #     bottom_right_projected[None,:],flat_corners[2][None,:]]
+    H_flat = compute_homography(flat_corners, flat_ground_truth)
+    H_folded = compute_homography(folded_corners, folded_ground_truth)
    
-    reprojection = calculate_projection(H, folded_corners)
+    # reprojection = calculate_projection(H, folded_corners)
 
-    folded = mppath.Path(np.r_[reprojection, reprojection[0][None,:]], closed=True)
-    # xx, yy = np.meshgrid(np.arange(0, dog_image.shape[1]), np.arange(0, dog_image.shape[0]))
-    xx, yy = np.meshgrid(np.arange(0, 1201), np.arange(0, 1051))
+    new_image = np.zeros((1050, 2400, 3),dtype='uint8')
+    folded = mppath.Path(np.r_[folded_ground_truth, folded_ground_truth[0][None,:]], closed=True)
+    xx, yy = np.meshgrid(np.arange(0, new_image.shape[1]), np.arange(0, new_image.shape[0]))
     xx = np.reshape(xx, -1)
     yy = np.reshape(yy, -1)
     zipped = zip(xx, yy)
-    flattened_portion = np.array(zipped)[np.where(folded.contains_points(zipped) == True)[0]]
-    new_image = transform_image(H, dog_image, np.array(zipped))
+    folded_portion = np.array(zipped)[np.where(folded.contains_points(zipped) == True)[0]]
+    transform_image(H_folded, dog_image, new_image, folded_portion)
+
+    flattened = mppath.Path(np.r_[flat_ground_truth, flat_ground_truth[0][None,:]], closed=True)
+    xx, yy = np.meshgrid(np.arange(0, new_image.shape[1]), np.arange(0, new_image.shape[0]))
+    xx = np.reshape(xx, -1)
+    yy = np.reshape(yy, -1)
+    zipped = zip(xx, yy)
+    flattened_portion = np.array(zipped)[np.where(flattened.contains_points(zipped) == True)[0]]
+    transform_image(H_flat, dog_image, new_image, flattened_portion)
+    pdb.set_trace()
     plt.imshow(new_image)
     plt.show()
 
