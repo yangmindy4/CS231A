@@ -65,7 +65,6 @@ def transform_image(H, orig_image, new_image, indices):
 
     return new_image
 
-
 def dog_example():
     dog_image = mpimg.imread("images/Dog2.jpg")
     # plt.imshow(dog_image)
@@ -139,6 +138,103 @@ def dog_example():
     plt.imshow(new_image)
     plt.show()
 
+def two_folds_example():
+    image = mpimg.imread("images/TwoFolds6.jpg")
+
+    # top left corners
+    folded_tl = np.array([
+        [784.506, 376.0],
+        [1698.97, 532.875],
+        [1610.97, 1137.42],
+        [604.673, 995.848]])
+    # top right corners
+    folded_tr = np.array([
+        [1698.97, 532.875],
+        [2575.18, 134.948],
+        [2678.48, 926.976],
+        [1610.97, 1137.42]
+        ])
+    # bottom left corners
+    folded_bl = np.array([
+        [604.673, 995.848],
+        [1610.97, 1137.42],
+        [1461.75, 1780.22],
+        [264.14, 1619.52]
+        ])
+    # bottom right corners
+    folded_br = np.array([
+        [1610.97, 1137.42],
+        [2678.48, 926.976],
+        [2556.05, 1263.68],
+        [1461.75, 1780.22]
+        ])
+
+    ground_truth_tl = np.array([
+        [0, 0],
+        [1199, 0],
+        [1199, 1049],
+        [0, 1049]
+        ])
+    ground_truth_tr = np.array([
+        [1199, 0],
+        [2399, 0],
+        [2399, 1049],
+        [1199, 1049]
+        ])
+    ground_truth_bl = np.array([
+        [0, 1050],
+        [1199, 1050],
+        [1199, 2099],
+        [0, 2099]
+        ])
+    ground_truth_br = np.array([
+        [1199, 1050],
+        [2399, 1050],
+        [2399, 2099],
+        [1199, 2099]
+        ])
+    H_tl = compute_homography(folded_tl, ground_truth_tl)
+    H_tr = compute_homography(folded_tr, ground_truth_tr)
+    H_bl = compute_homography(folded_bl, ground_truth_bl)
+    H_br = compute_homography(folded_br, ground_truth_br)
+   
+    new_image = np.zeros((2100, 2400, 3),dtype='uint8')
+    tl = mppath.Path(np.r_[ground_truth_tl, ground_truth_tl[0][None,:]], closed=True)
+    xx, yy = np.meshgrid(np.arange(0, new_image.shape[1]), np.arange(0, new_image.shape[0]))
+    xx = np.reshape(xx, -1)
+    yy = np.reshape(yy, -1)
+    zipped = zip(xx, yy)
+    tl_portion = np.array(zipped)[np.where(tl.contains_points(zipped) == True)[0]]
+    transform_image(H_tl, image, new_image, tl_portion)
+
+    tr = mppath.Path(np.r_[ground_truth_tr, ground_truth_tr[0][None,:]], closed=True)
+    xx, yy = np.meshgrid(np.arange(0, new_image.shape[1]), np.arange(0, new_image.shape[0]))
+    xx = np.reshape(xx, -1)
+    yy = np.reshape(yy, -1)
+    zipped = zip(xx, yy)
+    tr_portion = np.array(zipped)[np.where(tr.contains_points(zipped) == True)[0]]
+    transform_image(H_tr, image, new_image, tr_portion)
+
+    bl = mppath.Path(np.r_[ground_truth_bl, ground_truth_bl[0][None,:]], closed=True)
+    xx, yy = np.meshgrid(np.arange(0, new_image.shape[1]), np.arange(0, new_image.shape[0]))
+    xx = np.reshape(xx, -1)
+    yy = np.reshape(yy, -1)
+    zipped = zip(xx, yy)
+    bl_portion = np.array(zipped)[np.where(bl.contains_points(zipped) == True)[0]]
+    transform_image(H_bl, image, new_image, bl_portion)
+
+    br = mppath.Path(np.r_[ground_truth_br, ground_truth_br[0][None,:]], closed=True)
+    xx, yy = np.meshgrid(np.arange(0, new_image.shape[1]), np.arange(0, new_image.shape[0]))
+    xx = np.reshape(xx, -1)
+    yy = np.reshape(yy, -1)
+    zipped = zip(xx, yy)
+    br_portion = np.array(zipped)[np.where(br.contains_points(zipped) == True)[0]]
+    transform_image(H_br, image, new_image, br_portion)
+
+    plt.imshow(new_image)
+    plt.show()
+
+
 def main():
     # folded_envelope = mpimg.imread("images/Envelope2.jpg")
     # plt.imshow(folded_envelope)
@@ -174,8 +270,11 @@ def main():
     # new_image = transform_image(H, folded_envelope, flattened_portion)
     # plt.imshow(new_image)
     # plt.show()
+
     # triangle_example(H)
     dog_example()
+    # two_folds_example()
+
    
 
 if __name__ == '__main__':
