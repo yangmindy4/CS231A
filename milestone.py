@@ -106,18 +106,10 @@ def dog_example():
         [2399, 1049],
         [1199, 1049]
         ])
-    # top_right_projected = 2*flat_corners[1]-flat_corners[0]
-    # bottom_right_projected = 2*flat_corners[2]-flat_corners[3]
-    # plt.plot(top_right_projected[0], top_right_projected[1], 'bo')
-    # plt.plot(bottom_right_projected[0], bottom_right_projected[1], 'bo')
 
-    # projection = np.r_[flat_corners[1][None,:], top_right_projected[None,:], \
-    #     bottom_right_projected[None,:],flat_corners[2][None,:]]
     H_flat = compute_homography(flat_corners, flat_ground_truth)
     H_folded = compute_homography(folded_corners, folded_ground_truth)
    
-    # reprojection = calculate_projection(H, folded_corners)
-
     new_image = np.zeros((1050, 2400, 3),dtype='uint8')
     folded = mppath.Path(np.r_[folded_ground_truth, folded_ground_truth[0][None,:]], closed=True)
     xx, yy = np.meshgrid(np.arange(0, new_image.shape[1]), np.arange(0, new_image.shape[0]))
@@ -134,7 +126,6 @@ def dog_example():
     zipped = zip(xx, yy)
     flattened_portion = np.array(zipped)[np.where(flattened.contains_points(zipped) == True)[0]]
     transform_image(H_flat, dog_image, new_image, flattened_portion)
-    pdb.set_trace()
     plt.imshow(new_image)
     plt.show()
 
@@ -234,6 +225,56 @@ def two_folds_example():
     plt.imshow(new_image)
     plt.show()
 
+def checkerboard_example():
+    checkerboard_image = mpimg.imread("images/Checkerboard1.jpg")
+    # plt.imshow(checkerboard_image)
+    # plt.show()
+    flat_corners = np.array([
+        [638.507, 927.669],
+        [1108.66, 836.672],
+        [2223.37, 1557.06],
+        [877.374, 1932.43]])
+    flat_ground_truth = np.array([
+        [0, 0],
+        [719, 0],
+        [1680, 1854],
+        [0, 1854]
+        ])
+    folded_corners = np.array([
+        [1108.66, 836.672],
+        [1874.55, 70.781],
+        [2720.06, 1246.16],
+        [2223.37, 1557.06],
+        ])
+    folded_ground_truth = np.array([
+        [720, 0],
+        [2399, 0],
+        [2399, 1854],
+        [1680, 1854]
+        ])
+   
+    H_flat = compute_homography(flat_corners, flat_ground_truth)
+    H_folded = compute_homography(folded_corners, folded_ground_truth)
+   
+
+    new_image = np.zeros((1855, 2400, 3),dtype='uint8')
+    folded = mppath.Path(np.r_[folded_ground_truth, folded_ground_truth[0][None,:]], closed=True)
+    xx, yy = np.meshgrid(np.arange(0, new_image.shape[1]), np.arange(0, new_image.shape[0]))
+    xx = np.reshape(xx, -1)
+    yy = np.reshape(yy, -1)
+    zipped = zip(xx, yy)
+    folded_portion = np.array(zipped)[np.where(folded.contains_points(zipped) == True)[0]]
+    transform_image(H_folded, checkerboard_image, new_image, folded_portion)
+
+    flattened = mppath.Path(np.r_[flat_ground_truth, flat_ground_truth[0][None,:]], closed=True)
+    xx, yy = np.meshgrid(np.arange(0, new_image.shape[1]), np.arange(0, new_image.shape[0]))
+    xx = np.reshape(xx, -1)
+    yy = np.reshape(yy, -1)
+    zipped = zip(xx, yy)
+    flattened_portion = np.array(zipped)[np.where(flattened.contains_points(zipped) == True)[0]]
+    transform_image(H_flat, checkerboard_image, new_image, flattened_portion)
+    plt.imshow(new_image)
+    plt.show()
 
 def main():
     # folded_envelope = mpimg.imread("images/Envelope2.jpg")
@@ -272,9 +313,9 @@ def main():
     # plt.show()
 
     # triangle_example(H)
-    dog_example()
+    # dog_example()
     # two_folds_example()
-
+    checkerboard_example()
    
 
 if __name__ == '__main__':
