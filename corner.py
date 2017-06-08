@@ -1,4 +1,3 @@
-
 import numpy as np
 from scipy import misc
 from scipy.ndimage.filters import gaussian_filter
@@ -21,7 +20,48 @@ from skimage.transform import (hough_line, hough_line_peaks, probabilistic_hough
 from skimage import data
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from sift import SIFTDescriptor 
+import cv2
 
+
+def match_keypoints(descriptors1, descriptors2, threshold = 0.7):
+    # TODO: Implement this method!
+    matches = []
+    for i in range(0, descriptors1.shape[0]):
+        d1 = descriptors1[i, :]
+        distances = np.sqrt(np.sum(np.square(descriptors2 - d1), axis=1))
+        idxs = np.argsort(distances)
+        ratio = distances[idxs[0]]/distances[idxs[1]]
+        if ratio < threshold:
+            matches.append([i, idxs[0]])
+    return np.array(matches)
+
+def siftCorners():
+    filename = "images/Checkerboard1.jpg"
+    filename2 = "images/Checkerboard_default.jpg"
+
+    img = cv2.imread(filename)
+    gray_img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    sift = cv2.xfeatures2d.SIFT_create()
+    kp, desc = sift.detectAndCompute(gray_img, None)
+
+    img2 = cv2.imread(filename2)
+    gray_img2 = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
+    kp2, desc2 = sift.detectAndCompute(gray_img2, None)
+
+    bf = cv2.BFMatcher()
+    matches = bf.knnMatch(desc,desc2, k=2)
+
+    good = []
+    for m,n in matches:
+        if m.distance < 0.75*n.distance:
+            good.append([m])
+    # cv2.drawMatchesKnn expects list of lists as matches.
+    img3 = cv2.drawMatchesKnn(img,kp,img2,kp2,good,None, flags=2)
+    plt.imshow(img3),plt.show()
+    # plt.imshow(cv2.drawKeypoints(gray_img2, kp2, img2.copy()))
+    # plt.show()
+    return desc   
 
 def createFilter(degree, size):
     #size is odd
@@ -301,9 +341,10 @@ def main():
     Main parses argument list and runs findCorners() on the image
     :return: None
     """
+    siftCorners()
 
     # coords = houghAverage()
-    generateFilterImages()
+    # generateFilterImages()
     # coords = hough()
     # img = readImage("images/envelope2min.jpg")
     # img = gaussian_filter(img, sigma=2)
