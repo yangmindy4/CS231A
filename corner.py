@@ -48,8 +48,6 @@ def createFilter(degree, size):
                 angle = np.degrees(np.arctan(slope))
                 if angle < 0:
                     angle += 180
-                if degree > 90.0:
-                    degree -= 180.0
                 if angle < degree:
                     top[j, i] = 0
                 else:
@@ -214,7 +212,7 @@ def hough():
     return coords
 
 def generateFilterImages():
-    for degree in range(0, 360, 5):
+    for degree in range(95, 360, 5):
             size = 81
             filt = createFilter(degree, size)
             scipy.misc.imsave("images/filt" + str(degree) + ".jpg", filt)
