@@ -9,7 +9,7 @@ import scipy.misc
 from skimage.feature import corner_harris, corner_foerstner, corner_subpix, corner_peaks, peak_local_max, corner_shi_tomasi, canny
 from matplotlib import pyplot as plt
 import pdb
-from skimage import io, color, morphology
+from skimage import io, color, morphology, exposure
 from scipy.signal import convolve2d
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from sift import SIFTDescriptor 
 import cv2
+from skimage.feature import hog
 
 
 def match_keypoints(descriptors1, descriptors2, threshold = 0.7):
@@ -35,6 +36,22 @@ def match_keypoints(descriptors1, descriptors2, threshold = 0.7):
         if ratio < threshold:
             matches.append([i, idxs[0]])
     return np.array(matches)
+
+def supressCornersHog(coords, img, max_corners):
+    size = 21
+    half = size/2
+    hists = []
+    for i, c in enumerate(coords):
+        print c
+        part = img[int(c[0])-half:int(c[0])+half+1, int(c[1])-half:int(c[1])+half+1]
+        if part.shape[1] == 0:
+            continue
+        hist, hog_image = hog(part, orientations=36, pixels_per_cell=(size, size), cells_per_block=(1, 1), visualise=True)
+        hog_image =  exposure.rescale_intensity(hog_image, in_range=(0, 0.02))
+
+        scipy.misc.imsave("images/hog" + str(i) + "-" + str(c[0]) + " " + str(c[1]) + ".jpg", hog_image)
+        hists.append(hist)
+
 
 def siftCorners():
     filename = "images/Checkerboard1.jpg"
@@ -120,9 +137,9 @@ def intersection(line1, line2):
 def houghAverage():
     image = readImage("images/envelope2min.jpg")
     height, width = image.shape
-    image = gaussian_filter(image, sigma=2)
     image[image > 0.5] = 1
     image[image <= 0.5] = 0
+    image = gaussian_filter(image, sigma=5)
     edges = canny(image, sigma=3)
     lines = probabilistic_hough_line(edges, threshold=20, line_gap=2, line_length=100)
     lines = np.array(lines)
@@ -263,19 +280,28 @@ def suppressCorners(coords, img, max_corners):
     for i, c in enumerate(coords):
         row_convolutions = []
 
-        for degree in range(0, 180, 5):
-            size = 21
+
+        for degree in range(0, 360, 15):
+            size = 51
             filt = createFilter(degree, size)
-            scipy.misc.imsave("filt" + str(degree), filt)
             half = size/2
-            if np.reshape(img[c[0]-half:c[0]+half+1, c[1]-half:c[1]+half+1], -1).shape[0] == 0:
+            # if np.reshape(img[int(c[0])-half:int(c[0])+half+1, int(c[1])-half:int(c[1])+half+1], -1).shape[0] == 0:
+            #     row_convolutions.append(0)
+            #     continue
+            #row_convolutions.append(np.convolve(np.reshape(filt, -1), np.reshape(img[int(c[0])-half:int(c[0])+half+1, int(c[1])-half:int(c[1])+half+1], -1), 'valid')[0])
+            if img[int(c[0])-half:int(c[0])+half+1, int(c[1])-half:int(c[1])+half+1].shape[1] == 0:
                 row_convolutions.append(0)
-                continue
-            row_convolutions.append(np.convolve(np.reshape(filt, -1), np.reshape(img[c[0]-half:c[0]+half+1, c[1]-half:c[1]+half+1], -1), 'valid')[0])
+            else:
+                val = np.sum(np.logical_and(img[int(c[0])-half:int(c[0])+half+1, int(c[1])-half:int(c[1])+half+1], filt).astype(int))
+                print val
+                row_convolutions.append(val)
         convolutions.append(row_convolutions)
     pdb.set_trace()
-    threshold = (np.array(convolutions) > 150).astype(int)
-    idx = np.argsort(np.sum(threshold, axis=1))[0:max_corners]
+    convolutions = np.array(convolutions)
+    convolutions = convolutions/np.expand_dims(np.max(convolutions,axis=1).astype(float), 1)
+    # threshold = np.sort(convolutions, axis=1)
+    threshold = (np.array(convolutions) > .95).astype(int)
+    idx = np.argsort(np.sum(threshold, axis=1))[::-1][0:max_corners]
     return coords[idx]
 
 
@@ -284,56 +310,6 @@ def readImage(filename):
 
     return img/np.max(img)
 
-# def findCorners(img, window_size, k, thresh):
-#     """
-#     Finds and returns list of corners and new image with corners drawn
-#     :param img: The original image
-#     :param window_size: The size (side length) of the sliding window
-#     :param k: Harris corner constant. Usually 0.04 - 0.06
-#     :param thresh: The threshold above which a corner is counted
-#     :return:
-#     """
-#     #Find x and y derivatives
-#     pdb.set_trace()
-#     dy, dx = np.gradient(img)
-#     Ixx = dx**2
-#     Ixy = dy*dx
-#     Iyy = dy**2
-#     height = img.shape[0]
-#     width = img.shape[1]
-
-#     cornerList = []
-#     newImg = img.copy()
-#     offset = window_size/2
-
-#     #Loop through image and find our corners
-#     print "Finding Corners..."
-#     for y in range(offset, height-offset):
-#         for x in range(offset, width-offset):
-
-#             #Calculate sum of squares
-#             windowIxx = Ixx[y-offset:y+offset+1, x-offset:x+offset+1]
-#             windowIxy = Ixy[y-offset:y+offset+1, x-offset:x+offset+1]
-#             windowIyy = Iyy[y-offset:y+offset+1, x-offset:x+offset+1]
-#             Sxx = windowIxx.sum()
-#             Sxy = windowIxy.sum()
-#             Syy = windowIyy.sum()
-
-#             #Find determinant and trace, use to get corner response
-#             det = (Sxx * Syy) - (Sxy**2)
-#             trace = Sxx + Syy
-#             r = det - k*(trace**2)
-
-#             #If corner response is over threshold, color the point and add to corner list
-#             if r > thresh:
-#                 print x, y, r
-#                 cornerList.append([x, y, r])
-#                 newImg.itemset((y, x, 0), 0)
-#                 newImg.itemset((y, x, 1), 0)
-#                 newImg.itemset((y, x, 2), 255)
-#     pdb.set_trace()
-#     return newImg, cornerList
-
 def main():
     """
     Main parses argument list and runs findCorners() on the image
@@ -341,24 +317,20 @@ def main():
     """
     siftCorners()
 
-    # coords = houghAverage()
-    # generateFilterImages()
-    # coords = hough()
-    # img = readImage("images/envelope2min.jpg")
+    coords = houghAverage()
+    img = readImage("images/envelope2min.jpg")
     # img = gaussian_filter(img, sigma=2)
     # img[img > 0.5] = 1
     # img[img <= 0.5] = 0
-    # # plt.imshow(img)
-    # # plt.show()
-    # # coords = corner_peaks(corner_shi_tomasi(img, sigma=1), min_distance=20)
-    # # coords = suppressCorners(coords, img, 12)
-    # # pdb.set_trace()
-    # # # coords_subpix = corner_subpix(img, coords, alpha=2, window_size=100)
-    # fig, ax = plt.subplots()
-    # ax.imshow(img, interpolation='nearest', cmap=plt.cm.gray)
-    # ax.plot(coords[:, 1], coords[:, 0], '.r', markersize=10)
-    # # ax.plot(coords_subpix[:, 1], coords_subpix[:, 0], '+r', markersize=15)
-    # plt.show()
+    supressCornersHog(coords, color.rgb2gray(img), 12)
+    # coords = corner_peaks(corner_shi_tomasi(img, sigma=1), min_distance=20)
+    # coords = suppressCorners(coords, img, 30)
+    # coords_subpix = corner_subpix(img, coords, alpha=2, window_size=100)
+    fig, ax = plt.subplots()
+    ax.imshow(img, interpolation='nearest', cmap=plt.cm.gray)
+    ax.plot(coords[:, 1], coords[:, 0], '.r', markersize=10)
+    # ax.plot(coords_subpix[:, 1], coords_subpix[:, 0], '+r', markersize=15)
+    plt.show()
 
     #testing out filter
     # img = readImage("images/envelope1min.jpg")
